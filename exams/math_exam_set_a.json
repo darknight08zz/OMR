@@ -1,0 +1,17 @@
+{
+  "exam_id": "MATH001",
+  "exam_name": "Mathematics Midterm",
+  "version": "SET_A",
+  "answer_key": [
+    "A", "C", "B", "D", "A", "B", "C", "A", "D", "B",
+    "C", "A", "D", "B", "C", "D", "A", "B", "C", "D",
+    "B", "A", "C", "D", "A", "C", "B", "D", "A", "B",
+    "C", "D", "A", "B", "C", "A", "D", "B", "C", "D",
+    "A", "B", "C", "D", "A", "C", "B", "D", "A", "B",
+    "C", "A", "D", "B", "C", "D", "A", "B", "C", "D",
+    "B", "A", "C", "D", "A", "C", "B", "D", "A", "B",
+    "C", "D", "A", "B", "C", "A", "D", "B", "C", "D",
+    "A", "B", "C", "D", "A", "C", "B", "D", "A", "B",
+    "C", "A", "D", "B", "C", "D", "A", "B", "C", "D"
+  ]
+}

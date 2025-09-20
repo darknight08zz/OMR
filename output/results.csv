@@ -1,0 +1,14 @@
+Filename,ExamID,Version,Subject1,Subject2,Subject3,Subject4,Subject5,Total,Flagged,Debug_Image
+Img18.jpeg,MATH001,SET_A,14,0,0,0,0,14,False,output/debug_Img18.jpeg
+Img17.jpeg,MATH001,SET_A,14,0,0,0,0,14,False,output/debug_Img17.jpeg
+Img3.jpeg,MATH001,SET_A,14,0,0,0,0,14,False,output/debug_Img3.jpeg
+Img8.jpeg,MATH001,SET_B,0,0,0,0,0,0,False,output/debug_Img8.jpeg
+Img16.jpeg,MATH001,SET_A,14,0,0,0,0,14,False,output/debug_Img16.jpeg
+Img4.jpeg,MATH001,SET_A,14,0,0,0,0,14,False,output/debug_Img4.jpeg
+Img2.jpeg,MATH001,SET_A,14,4,0,0,0,18,False,output/debug_Img2.jpeg
+Img7.jpeg,MATH001,SET_A,14,0,0,0,0,14,False,output/debug_Img7.jpeg
+Img5.jpeg,MATH001,SET_A,14,0,0,0,0,14,False,output/debug_Img5.jpeg
+Img19.jpeg,MATH001,SET_A,14,14,0,0,0,28,False,output/debug_Img19.jpeg
+Img6.jpeg,MATH001,SET_A,14,0,0,0,0,14,False,output/debug_Img6.jpeg
+Img20.jpeg,MATH001,SET_A,14,14,16,14,0,58,False,output/debug_Img20.jpeg
+Img1.jpeg,MATH001,SET_A,14,2,0,0,0,16,False,output/debug_Img1.jpeg

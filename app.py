@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from datetime import datetime
 
-# JSON serialization helper function
+
 def convert_numpy_types(obj):
     """Convert numpy types to native Python types for JSON serialization"""
     if isinstance(obj, dict):
@@ -20,21 +20,20 @@ def convert_numpy_types(obj):
         return float(obj)
     elif isinstance(obj, np.ndarray):
         return obj.tolist()
-    elif hasattr(obj, 'item'):  # Handle numpy scalars
+    elif hasattr(obj, 'item'):
         return obj.item()
     else:
         return obj
 
-# Import from the enhanced main.py with auto-crop features and answer set selection
-# Note: Make sure main.py is in the same directory as this Streamlit app
+
 try:
     from main import (
         create_answer_sets_input,
         load_or_create_answer_sets,
         select_answer_set_for_processing,
         calculate_score_with_comparison,
-        process_single_image_with_autocrop,  # Updated function with answer set parameter
-        batch_process_with_autocrop_and_selection,  # Updated batch function
+        process_single_image_with_autocrop,
+        batch_process_with_autocrop_and_selection,
         convert_to_greyscale,
         apply_enhancement_techniques,
         detect_and_crop_bubble_region,
@@ -47,9 +46,7 @@ except ImportError as e:
     st.error(f"Error importing main.py functions: {e}")
     st.error("Make sure main.py is in the same directory as this Streamlit app")
 
-# ========================
-# PAGE CONFIG & THEME
-# ========================
+
 st.set_page_config(
     page_title="🎯 Automated OMR Evaluation & Scoring System",
     page_icon="📋",
@@ -57,7 +54,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Enhanced custom CSS with answer set selection theme
+
 st.markdown("""
     <style>
     .main .block-container {
@@ -166,21 +163,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ========================
-# SIDEBAR NAVIGATION
-# ========================
+
 with st.sidebar:
-    st.image("https://via.placeholder.com/150x50?text=Auto-Crop+OMR+v3.0", use_container_width=True)
+    
     st.title("Automated OMR Evaluation & Scoring System")
     st.markdown("---")
     st.markdown("### 🧭 Navigation")
-    # Initialize session state
+    
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "answer_sets"
-    # Initialize answer set selection in session state
+    
     if 'selected_answer_set' not in st.session_state:
         st.session_state.selected_answer_set = None
-    # Enhanced navigation with answer set selection features
+    
     pages = [
         ("answer_sets", "📝 Answer Sets", "Create & manage answer sets"),
         ("upload", "🎯 Image Processing", "Auto-crop with answer set selection"),
@@ -189,10 +184,10 @@ with st.sidebar:
         ("debug", "🔍 Debug Pipeline", "Visual debugging"),
         ("analytics", "📈 Analytics", "Performance insights")
     ]
-    # Navigation button logic with explicit rerun handling
+    
     for page_key, button_text, description in pages:
         is_current = st.session_state.current_page == page_key
-        button_key = f"nav_{page_key}"  # Unique key for each button
+        button_key = f"nav_{page_key}"
         if st.button(button_text, key=button_key, use_container_width=True,
                      type="primary" if is_current else "secondary"):
             st.session_state.current_page = page_key
@@ -200,7 +195,7 @@ with st.sidebar:
         st.caption(description)
     st.markdown("---")
     st.markdown("### 🎯 Answer Set Selection")
-    # Display current selected answer set
+    
     if st.session_state.selected_answer_set:
         st.success(f"✅ Selected: {st.session_state.selected_answer_set}")
     else:
@@ -211,7 +206,7 @@ with st.sidebar:
     st.caption("🔍 Enhanced Precision on ROI")
     st.caption("📊 Answer Set Selection")
     st.caption("⚡ Faster Processing")
-    # Answer sets status
+    
     if os.path.exists("answer_keys.json"):
         try:
             with open("answer_keys.json", "r") as f:
@@ -222,9 +217,7 @@ with st.sidebar:
         except:
             st.error("⚠️ Sets Need Setup")
 
-# ========================
-# HELPER FUNCTIONS FOR ANSWER SET SELECTION
-# ========================
+
 def get_available_answer_sets():
     """Get available answer sets from file"""
     if os.path.exists("answer_keys.json"):
@@ -243,10 +236,10 @@ def display_answer_set_selector():
         return None
     
     st.markdown("### 📝 Select Answer Set for Processing")
-    # Create selection options
+
     set_options = list(answer_sets.keys())
     
-    # Display current selection
+
     if st.session_state.selected_answer_set in set_options:
         default_index = set_options.index(st.session_state.selected_answer_set)
     else:
@@ -266,7 +259,7 @@ def display_answer_set_selector():
             st.success(f"Selected: {selected_set}")
             st.rerun()
     
-    # Display preview of selected set
+
     if selected_set:
         st.markdown("### 📋 Answer Set Preview")
         preview_answers = answer_sets[selected_set]
@@ -282,33 +275,31 @@ def display_answer_set_selector():
         
     return selected_set
 
-# ========================
-# PAGE FUNCTIONS
-# ========================
+
 def extract_answers_from_column(column):
     """Extract answers from a pandas column, handling various formats"""
     try:
-        # Convert to list and clean
+
         answers = []
         for value in column.dropna():
             value_str = str(value).strip().upper()
-            # Handle different formats
+
             if len(value_str) == 1 and value_str in ['A', 'B', 'C', 'D']:
-                # Single answer per cell
+
                 answers.append(value_str)
             elif len(value_str) > 1:
-                # Multiple answers in one cell (like "ABCD" or "A,B,C,D")
+
                 if ',' in value_str:
-                    # Comma-separated
+
                     cell_answers = [ans.strip() for ans in value_str.split(',')]
                 else:
-                    # Continuous string
+
                     cell_answers = list(value_str.replace(' ', ''))
-                # Add valid answers
+
                 for ans in cell_answers:
                     if ans in ['A', 'B', 'C', 'D']:
                         answers.append(ans)
-        # Validate total count and content
+
         if len(answers) == 100 and all(ans in ['A', 'B', 'C', 'D'] for ans in answers):
             return answers
         return None
@@ -319,12 +310,12 @@ def extract_answers_from_column(column):
 def extract_answers_from_dataframe(df):
     """Extract answers from a dataframe, trying different columns"""
     try:
-        # First, try to find a column with answers
+
         for col in df.columns:
             answers = extract_answers_from_column(df[col])
             if answers:
                 return answers
-        # If no single column works, try concatenating first row
+
         if len(df) > 0:
             first_row_answers = []
             for col in df.columns:
@@ -344,7 +335,6 @@ def show_answer_sets_page():
     st.title("📝 Answer Sets Management")
     st.markdown("### Create and manage your answer sets for auto-crop OMR processing")
     
-    # Answer sets overview with answer set selection mention
     with st.container():
         st.markdown("""
         <div class="answer-set-box">
@@ -356,7 +346,7 @@ def show_answer_sets_page():
         </div>
         """, unsafe_allow_html=True)
     
-    # Check current answer sets
+    
     current_sets = {}
     if os.path.exists("answer_keys.json"):
         try:
@@ -365,7 +355,7 @@ def show_answer_sets_page():
         except Exception as e:
             st.error(f"Error reading answer sets: {e}")
     
-    # Display current sets status
+    
     if current_sets:
         st.markdown("### 📋 Current Answer Sets")
         cols = st.columns(min(len(current_sets), 4))
@@ -374,7 +364,7 @@ def show_answer_sets_page():
                 st.markdown(f'<div class="success-box set-a">✅ {set_name} configured</div>', unsafe_allow_html=True)
                 preview = ''.join(answers[:10]) + "..." if len(answers) > 10 else ''.join(answers)
                 st.code(f"Preview: {preview}", language=None)
-                # Answer distribution
+    
                 dist = {opt: answers.count(opt) for opt in ['A', 'B', 'C', 'D']}
                 st.caption(f"A:{dist['A']} B:{dist['B']} C:{dist['C']} D:{dist['D']}")
     else:
@@ -382,7 +372,7 @@ def show_answer_sets_page():
     
     st.markdown("---")
     
-    # Answer set creation interface
+    
     st.markdown("### 📝 Create/Update Answer Sets")
     tab1, tab2 = st.tabs(["📋 Interactive Input", "📁 File Upload"])
     
@@ -390,7 +380,7 @@ def show_answer_sets_page():
         st.markdown("#### Enter Answer Sets Manually")
         with st.form("answer_sets_form"):
             st.info("Enter 100 answers (A, B, C, or D) for each set. You can create multiple sets.")
-            # Dynamic answer set creation
+    
             num_sets = st.number_input("Number of answer sets to create:", min_value=1, max_value=10, value=2)
             new_sets = {}
             for i in range(num_sets):
@@ -403,7 +393,7 @@ def show_answer_sets_page():
                     key=f"set_answers_{i}"
                 )
                 if set_answers.strip():
-                    # Process answers
+    
                     if ',' in set_answers:
                         answers = [ans.strip().upper() for ans in set_answers.split(',')]
                     else:
@@ -415,7 +405,7 @@ def show_answer_sets_page():
             submitted = st.form_submit_button("💾 Save Answer Sets", use_container_width=True)
             if submitted and new_sets:
                 try:
-                    # Merge with existing sets
+    
                     if current_sets:
                         current_sets.update(new_sets)
                     else:
@@ -453,7 +443,7 @@ def show_answer_sets_page():
                     if file_type == "xlsx":
                         df = pd.read_excel(uploaded_file, sheet_name=None)
                         if len(df) > 1:
-                            # Multiple sheets
+    
                             for sheet_name, sheet_df in df.items():
                                 answers = extract_answers_from_dataframe(sheet_df)
                                 if answers and len(answers) == 100:
@@ -461,7 +451,6 @@ def show_answer_sets_page():
                                     valid_sets[clean_name] = answers
                                     st.success(f"✅ Extracted {clean_name} from sheet: {sheet_name}")
                         else:
-                            # Single sheet with columns
                             sheet_df = list(df.values())[0]
                             for col in sheet_df.columns:
                                 answers = extract_answers_from_column(sheet_df[col])
@@ -469,7 +458,7 @@ def show_answer_sets_page():
                                     clean_name = f"SET_{str(col).upper()}"
                                     valid_sets[clean_name] = answers
                                     st.success(f"✅ Extracted {clean_name} from column: {col}")
-                    else:  # CSV
+                    else:  
                         df = pd.read_csv(uploaded_file)
                         for col in df.columns:
                             answers = extract_answers_from_column(df[col])
@@ -488,7 +477,7 @@ def show_answer_sets_page():
                             st.write("Answer distribution:", dict(answer_counts))
                     
                     if st.button("📥 Import Extracted Answer Sets"):
-                        # Merge with existing
+                        
                         current_sets.update(valid_sets)
                         with open("answer_keys.json", "w") as f:
                             json.dump(current_sets, f, indent=2)
@@ -499,13 +488,13 @@ def show_answer_sets_page():
             except Exception as e:
                 st.error(f"Error processing file: {e}")
     
-    # Download and management section
+    
     if current_sets:
         st.markdown("---")
         st.markdown("### 📥 Export and Manage Answer Sets")
         col1, col2, col3 = st.columns(3)
         with col1:
-            # Export all sets
+    
             json_safe_sets = convert_numpy_types(current_sets)
             json_data = json.dumps(json_safe_sets, indent=2)
             st.download_button(
@@ -516,7 +505,7 @@ def show_answer_sets_page():
                 use_container_width=True
             )
         with col2:
-            # Delete sets
+    
             if len(current_sets) > 0:
                 set_to_delete = st.selectbox("Select set to delete:", list(current_sets.keys()))
                 if st.button("🗑️ Delete Selected Set", use_container_width=True):
@@ -526,7 +515,7 @@ def show_answer_sets_page():
                     st.success(f"Deleted {set_to_delete}")
                     st.rerun()
         with col3:
-            # Clear all sets
+    
             if st.button("⚠️ Clear All Sets", use_container_width=True, type="secondary"):
                 if os.path.exists("answer_keys.json"):
                     os.remove("answer_keys.json")
@@ -537,7 +526,7 @@ def show_upload_page():
     st.title("🎯 OMR Processing with Answer Set Selection")
     st.markdown("### Auto-crop processing with manual answer set selection")
     
-    # Check if answer sets exist
+    
     answer_sets = get_available_answer_sets()
     if not answer_sets:
         st.error("❌ No answer sets found! Please create answer sets first.")
@@ -559,18 +548,18 @@ def show_upload_page():
                 st.rerun()
         return
     
-    # Answer set selection interface
+    
     st.markdown("### 📝 Step 1: Select Answer Set for Processing")
     selected_answer_set = display_answer_set_selector()
     if not selected_answer_set:
         return
     
-    # Update session state with selection
+    
     st.session_state.selected_answer_set = selected_answer_set
     
     st.markdown("---")
     
-    # Auto-crop processing info
+    
     st.markdown("""
     <div class="autocrop-box">
     <h4>🎯 Auto-Crop Enhanced Processing Pipeline</h4>
@@ -599,13 +588,13 @@ def show_upload_page():
         </div>
         """, unsafe_allow_html=True)
         
-        # Processing confirmation
+    
         if st.button("🚀 Start Processing with Selected Answer Set", use_container_width=True, type="primary"):
             results = []
             temp_storage_log = []
             crop_statistics = []
             
-            # Processing progress
+    
             progress_container = st.container()
             with progress_container:
                 progress_bar = st.progress(0)
@@ -618,7 +607,7 @@ def show_upload_page():
                 progress_bar.progress(progress)
                 status_text.text(f"Processing {idx + 1}/{len(uploaded_files)}: {uploaded_file.name}")
                 
-                # Save uploaded file
+    
                 os.makedirs("input", exist_ok=True)
                 file_path = os.path.join("input", uploaded_file.name)
                 with open(file_path, "wb") as f:
@@ -627,7 +616,7 @@ def show_upload_page():
                 try:
                     with st.spinner(f"🎯 Processing: {uploaded_file.name} with {selected_answer_set}..."):
                         temp_storage = []
-                        # Process with selected answer set
+    
                         result, detailed_results = process_single_image_with_autocrop(
                             file_path, selected_answer_set, answer_sets, temp_storage
                         )
@@ -647,7 +636,7 @@ def show_upload_page():
                                 'auto_cropped': result.get('Auto_Cropped', False)
                             })
                             
-                            # Track crop statistics
+    
                             if result.get('Auto_Cropped', False):
                                 crop_statistics.append({
                                     'filename': uploaded_file.name,
@@ -657,7 +646,7 @@ def show_upload_page():
                                     'answer_set_used': selected_answer_set
                                 })
                             
-                            # Real-time metrics display
+    
                             with crop_metrics.container():
                                 cols = st.columns(5)
                                 with cols[0]:
@@ -674,7 +663,7 @@ def show_upload_page():
                                     grid_quality = result.get('Grid_Quality', 0)
                                     st.metric("Quality", f"{grid_quality:.3f}")
                             
-                            # Success display
+    
                             crop_indicator = "🎯 AUTO-CROPPED" if result.get('Auto_Cropped', False) else "📄 FULL IMAGE"
                             st.markdown(f"""
                             <div class="roi-detected">
@@ -692,14 +681,14 @@ def show_upload_page():
                     st.error(f"❌ Error processing {uploaded_file.name}: {str(e)}")
                     continue
             
-            # Processing completion
+    
             pipeline_status.empty()
             crop_metrics.empty()
             status_text.empty()
             progress_bar.empty()
             
             if results:
-                # Summary display
+    
                 avg_score = sum(r["Total"] for r in results) / len(results)
                 cropped_files = len([r for r in results if r.get('Auto_Cropped', False)])
                 st.markdown(f"""
@@ -712,12 +701,12 @@ def show_upload_page():
                 </div>
                 """, unsafe_allow_html=True)
             
-            # Store results
+    
             st.session_state.processed_results = results
             st.session_state.temp_storage_log = temp_storage_log
             st.session_state.crop_statistics = crop_statistics
     else:
-        # Welcome display
+    
         st.markdown("## 👋 Ready for Processing!")
         col1, col2 = st.columns(2)
         with col1:
@@ -750,7 +739,7 @@ def show_results_page():
     results = st.session_state.processed_results
     df = pd.DataFrame(results)
     
-    # Enhanced dashboard metrics
+    
     st.markdown("### 🎯 Processing Results Dashboard")
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
@@ -769,7 +758,7 @@ def show_results_page():
         flagged_count = df.get("Flagged", pd.Series(dtype=bool)).sum() if not df.empty else 0
         st.metric("⚠️ Flagged", flagged_count)
     
-    # Results table with answer set information
+    
     if not df.empty:
         display_columns = ["Filename", "Selected_Answer_Set", "Subject1", "Subject2", "Subject3", 
                           "Subject4", "Subject5", "Total", "Accuracy", "Auto_Cropped"]
@@ -777,7 +766,7 @@ def show_results_page():
         if available_columns:
             st.dataframe(df[available_columns], use_container_width=True, height=400)
         
-        # Export with answer set info
+    
         st.markdown("### 📥 Export Results")
         csv = df.to_csv(index=False)
         st.download_button(
@@ -800,10 +789,10 @@ def show_comparison_page():
             st.rerun()
         return
     
-    # Load comparison log if available
+    
     if os.path.exists("output/answer_comparison_log.csv"):
         comparison_df = pd.read_csv("output/answer_comparison_log.csv")
-        # Add answer set information if available
+    
         if 'processed_results' in st.session_state and st.session_state.processed_results:
             results_df = pd.DataFrame(st.session_state.processed_results)
             if 'Selected_Answer_Set' in results_df.columns:
@@ -825,14 +814,14 @@ def show_comparison_page():
             accuracy = (correct_count / total_comparisons * 100) if total_comparisons > 0 else 0
             st.metric("Accuracy", f"{accuracy:.1f}%")
         with col5:
-            # Show answer set used
+    
             if 'answer_set_used' in comparison_df.columns:
                 answer_set = comparison_df['answer_set_used'].iloc[0] if not comparison_df.empty else "N/A"
                 st.metric("Answer Set Used", answer_set)
             else:
                 st.metric("Answer Set", "Not Available")
         
-        # Answer set performance summary
+    
         if 'answer_set_used' in comparison_df.columns:
             st.markdown("### 📝 Answer Set Performance Summary")
             answer_set = comparison_df['answer_set_used'].iloc[0]
@@ -845,8 +834,8 @@ def show_comparison_page():
             <p><strong>Flagged (Unanswered):</strong> {flagged_count}</p>
             </div>
             """, unsafe_allow_html=True)
-        
-        # Auto-crop performance summary (if available)
+    
+    
         if 'crop_statistics' in st.session_state and st.session_state.crop_statistics:
             st.markdown("### 🎯 Auto-Crop Performance with Answer Set")
             crop_stats = st.session_state.crop_statistics
@@ -865,7 +854,7 @@ def show_comparison_page():
                 </div>
                 """, unsafe_allow_html=True)
             with col2:
-                # Show answer set correlation with crop performance
+    
                 if 'answer_set_used' in comparison_df.columns:
                     answer_set = comparison_df['answer_set_used'].iloc[0]
                     st.markdown(f"""
@@ -878,9 +867,9 @@ def show_comparison_page():
                     </div>
                     """, unsafe_allow_html=True)
         
-        # Detailed comparison results with answer set info
+    
         st.markdown("### 📋 Detailed Comparison Results")
-        # Add comparison result column for better visualization
+    
         def create_comparison_result(row):
             if row['is_correct']:
                 return '✓ CORRECT'
@@ -890,7 +879,7 @@ def show_comparison_page():
                 return '✗ INCORRECT'
         comparison_df['comparison_result'] = comparison_df.apply(create_comparison_result, axis=1)
         
-        # Color coding function
+    
         def color_comparison_result(val):
             if val == '✓ CORRECT':
                 return 'background-color: #d4edda; color: #155724'
@@ -900,7 +889,7 @@ def show_comparison_page():
                 return 'background-color: #fff3cd; color: #856404'
             return ''
         
-        # Filtering options
+    
         col1, col2, col3 = st.columns(3)
         with col1:
             show_filter = st.selectbox(
@@ -916,7 +905,7 @@ def show_comparison_page():
             if 'answer_set_used' in comparison_df.columns:
                 st.info(f"Answer Set: {comparison_df['answer_set_used'].iloc[0]}")
         
-        # Apply filters
+    
         filtered_df = comparison_df.copy()
         if show_filter != "All":
             if show_filter == "Correct Only":
@@ -929,7 +918,7 @@ def show_comparison_page():
             subject_num = int(subject_filter.split()[-1])
             filtered_df = filtered_df[filtered_df['subject'] == subject_num]
         
-        # Display filtered results
+    
         display_cols = ['question', 'subject', 'temp_answer', 'key_answer', 'comparison_result']
         if 'answer_set_used' in filtered_df.columns:
             display_cols.append('answer_set_used')
@@ -944,7 +933,7 @@ def show_comparison_page():
         else:
             st.info("No results match the current filter criteria.")
         
-        # Subject-wise analysis with answer set info
+    
         st.markdown("### 📚 Subject-wise Analysis by Answer Set")
         subject_analysis = comparison_df.groupby('subject').agg({
             'is_correct': ['sum', 'count'],
@@ -959,7 +948,7 @@ def show_comparison_page():
         with col2:
             st.dataframe(subject_analysis, use_container_width=True)
         
-        # Enhanced download section with answer set info
+    
         st.markdown("### 📥 Export Comparison Data with Answer Set Information")
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -981,7 +970,7 @@ def show_comparison_page():
                 use_container_width=True
             )
         with col3:
-            # Export answer set performance summary
+    
             if 'answer_set_used' in comparison_df.columns:
                 summary_data = {
                     'answer_set': comparison_df['answer_set_used'].iloc[0],
@@ -1006,7 +995,7 @@ def show_debug_page():
     st.title("🔍 Auto-Crop Enhanced Pipeline Debug Viewer")
     st.markdown("### Visual inspection of the auto-crop processing pipeline with answer set information")
     
-    # Show answer set information if available
+    
     if 'processed_results' in st.session_state and st.session_state.processed_results:
         results_df = pd.DataFrame(st.session_state.processed_results)
         if 'Selected_Answer_Set' in results_df.columns:
@@ -1027,7 +1016,7 @@ def show_debug_page():
             st.rerun()
         return
     
-    # Enhanced debug file mapping with auto-crop steps
+    
     step_files = {
         "Step 1: Smart Greyscale": "step1_greyscale.jpg",
         "Step 2a: Advanced Denoising": "step2a_denoised.jpg", 
@@ -1053,7 +1042,7 @@ def show_debug_page():
         st.warning("No debug step images found.")
         return
     
-    # Enhanced step selector with auto-crop highlighting
+    
     col1, col2 = st.columns([3, 1])
     with col1:
         selected_step = st.selectbox(
@@ -1062,7 +1051,7 @@ def show_debug_page():
             help="🎯 indicates auto-crop specific steps"
         )
     with col2:
-        # Show processing statistics if available
+    
         if 'crop_statistics' in st.session_state and st.session_state.crop_statistics:
             latest_stats = st.session_state.crop_statistics[-1]
             st.metric("Size Reduction", f"{latest_stats['reduction_ratio']:.1%}")
@@ -1094,17 +1083,17 @@ def show_debug_page():
             }
             description = step_descriptions.get(selected_step, "Auto-crop processing step")
             st.info(description)
-            # Show auto-crop specific metrics if available
+    
             if "🎯" in selected_step and 'crop_statistics' in st.session_state:
                 st.markdown("**Auto-Crop Metrics:**")
                 if st.session_state.crop_statistics:
                     latest_stats = st.session_state.crop_statistics[-1]
                     st.metric("Bubble Density", f"{latest_stats['bubble_density']:.1f}")
-                    # Show answer set used for this processing
+    
                     if 'answer_set_used' in latest_stats:
                         st.info(f"Answer Set: {latest_stats['answer_set_used']}")
     
-    # Debug session summary
+    
     st.markdown("### 📊 Debug Session Summary")
     if 'processed_results' in st.session_state and st.session_state.processed_results:
         results_df = pd.DataFrame(st.session_state.processed_results)
@@ -1147,7 +1136,7 @@ def show_analytics_page():
         st.warning("No data available for analytics.")
         return
     
-    # Answer Set Performance Analytics
+    
     st.markdown("### 📝 Answer Set Performance Analysis")
     if 'Selected_Answer_Set' in df.columns:
         answer_set_used = df['Selected_Answer_Set'].iloc[0]
@@ -1163,7 +1152,7 @@ def show_analytics_page():
             </div>
             """, unsafe_allow_html=True)
         with col2:
-            # Score distribution analysis
+    
             st.markdown("**Score Distribution Analysis:**")
             score_ranges = {
                 "90-100": len(df[df['Total'] >= 90]),
@@ -1176,14 +1165,14 @@ def show_analytics_page():
                 percentage = (count / len(df) * 100) if len(df) > 0 else 0
                 st.write(f"- {range_name}: {count} ({percentage:.1f}%)")
         with col3:
-            # Answer set effectiveness metrics
+    
             st.markdown("**Answer Set Effectiveness:**")
             avg_accuracy = df['Accuracy'].mean() if 'Accuracy' in df.columns else 0
             flagged_rate = df.get('Flagged', pd.Series(dtype=bool)).sum() / len(df) * 100 if len(df) > 0 else 0
             st.write(f"- Average accuracy: {avg_accuracy:.1f}%")
             st.write(f"- Flagged rate: {flagged_rate:.1f}%")
             st.write(f"- Processing success: 100%")
-            # Effectiveness rating
+    
             if avg_accuracy >= 80:
                 effectiveness = "Excellent"
                 color = "🟢"
@@ -1195,7 +1184,7 @@ def show_analytics_page():
                 color = "🔴"
             st.write(f"- {color} Effectiveness: {effectiveness}")
     
-    # Enhanced score and subject analysis
+    
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### 🎯 Score Distribution")
@@ -1213,7 +1202,7 @@ def show_analytics_page():
             })
             st.bar_chart(subject_analysis.set_index('Subject'), height=300)
     
-    # Auto-crop performance analytics with answer set correlation
+    
     st.markdown("### 🎯 Auto-Crop Performance Analytics by Answer Set")
     if 'Auto_Cropped' in df.columns:
         cropped_df = df[df['Auto_Cropped'] == True]
@@ -1229,7 +1218,7 @@ def show_analytics_page():
                     'Average Score': [cropped_avg, uncropped_avg]
                 })
                 st.bar_chart(performance_data.set_index('Processing Type'))
-                # Performance comparison insights
+    
                 if cropped_avg > uncropped_avg:
                     improvement = cropped_avg - uncropped_avg
                     st.success(f"Auto-crop improved scores by {improvement:.1f} points on average")
@@ -1252,7 +1241,7 @@ def show_analytics_page():
                 quality_rating = "High" if avg_quality > 0.8 else "Medium" if avg_quality > 0.5 else "Low"
                 st.info(f"Average quality: {avg_quality:.3f} ({quality_rating})")
     
-    # Comprehensive performance metrics
+    
     st.markdown("### 🔬 Comprehensive Performance Metrics")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -1272,11 +1261,11 @@ def show_analytics_page():
         pipeline_success = len(df) / len(df) * 100 if len(df) > 0 else 0  # All processed files
         st.metric("⚡ Pipeline Success", f"{pipeline_success:.0f}%")
     
-    # Answer Set Effectiveness Analysis
+    
     st.markdown("### 📊 Answer Set Effectiveness Analysis")
     if 'Selected_Answer_Set' in df.columns and len(df) > 0:
         answer_set = df['Selected_Answer_Set'].iloc[0]
-        # Create effectiveness metrics
+    
         effectiveness_metrics = {
             'Answer Set': answer_set,
             'Files Processed': len(df),
@@ -1286,11 +1275,11 @@ def show_analytics_page():
             'High Performers (90+)': len(df[df['Total'] >= 90]) / len(df) * 100,
             'Low Performers (<60)': len(df[df['Total'] < 60]) / len(df) * 100
         }
-        # Display as DataFrame
+    
         metrics_df = pd.DataFrame([effectiveness_metrics])
         st.dataframe(metrics_df.round(2), use_container_width=True)
         
-        # Insights and recommendations
+    
         st.markdown("### 💡 Insights and Recommendations")
         avg_score = df['Total'].mean()
         score_std = df['Total'].std()
@@ -1319,11 +1308,9 @@ def show_analytics_page():
             else:
                 st.success("✅ All students performing well with current answer set")
 
-# ========================
-# MAIN APP ROUTER
-# ========================
+
 def main():
-    # Route to appropriate page based on session state
+
     if st.session_state.current_page == "answer_sets":
         show_answer_sets_page()
     elif st.session_state.current_page == "upload":

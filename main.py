@@ -68,48 +68,45 @@ def detect_and_crop_bubble_region(binary_img, original_img, debug=True):
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
     smoothed_density = cv2.filter2D(density_map, -1, kernel)
 
-    # --- MODIFIED: Higher density threshold for tighter crop ---
-    # Increased threshold multiplier from 0.3 to 0.5 or 0.6
-    density_threshold = np.max(smoothed_density) * 0.55 # <--- ADJUST THIS VALUE (Try 0.5, 0.55, 0.6)
+    
+    density_threshold = np.max(smoothed_density) * 0.55
     high_density_mask = (smoothed_density > density_threshold).astype(np.uint8)
 
-    # Find the bounding box of high density region
+    
     coords = cv2.findNonZero(high_density_mask)
     if coords is not None:
         x, y, w_crop, h_crop = cv2.boundingRect(coords)
-        # --- MODIFIED: Reduced padding ---
-        # Reduced padding from 30 to a smaller fixed value or proportional value
-        # Consider estimating bubble spacing for dynamic padding?
-        padding = 20 # <--- Reduced padding (Try 10, 15, 20)
+        
+        padding = 20 
         crop_x1 = max(0, x - padding)
         crop_y1 = max(0, y - padding)
         crop_x2 = min(w, x + w_crop + padding)
         crop_y2 = min(h, y + h_crop + padding)
     else:
-        # Fallback to initial bounding box method if density method fails
+        
         print("   ⚠️ Density-based crop failed, using bounding box method")
         crop_x1, crop_y1 = int(min_x), int(min_y)
         crop_x2, crop_y2 = int(max_x), int(max_y)
 
-    # Validate crop region
+    
     crop_width = crop_x2 - crop_x1
     crop_height = crop_y2 - crop_y1
-    # Adjust minimum size criteria if needed, but keep reasonable
-    if crop_width < 150 or crop_height < 200: # Slightly relaxed from 200x300
+    
+    if crop_width < 150 or crop_height < 200:
         print("   ⚠️ Detected crop region too small, using full image")
         return None, binary_img, original_img
 
-    # Calculate coverage statistics
+    
     total_area = w * h
     crop_area = crop_width * crop_height
     coverage_ratio = crop_area / total_area
     reduction_ratio = 1.0 - coverage_ratio
 
-    # Crop the images
+    
     cropped_binary = binary_img[crop_y1:crop_y2, crop_x1:crop_x2]
     cropped_original = original_img[crop_y1:crop_y2, crop_x1:crop_x2]
 
-    # Create crop info
+    
     crop_info = {
         'bbox': (crop_x1, crop_y1, crop_width, crop_height),
         'original_size': (w, h),
@@ -120,14 +117,14 @@ def detect_and_crop_bubble_region(binary_img, original_img, debug=True):
         'density_score': np.mean(smoothed_density[crop_y1:crop_y2, crop_x1:crop_x2]) if crop_area > 0 else 0
     }
 
-    # Debug visualization
+    
     if debug:
         cv2.rectangle(debug_img, (crop_x1, crop_y1), (crop_x2, crop_y2), (0, 255, 0), 3)
         cv2.putText(debug_img, f"AUTO-CROP REGION",
                    (crop_x1, crop_y1-15), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
         cv2.putText(debug_img, f"Reduction: {reduction_ratio:.1%}",
                    (crop_x1, crop_y1-45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-        # Mark detected bubbles
+        
         for center_x, center_y in bubble_centers:
             cv2.circle(debug_img, (center_x, center_y), 3, (255, 0, 0), 1)
         os.makedirs("output/debug_steps", exist_ok=True)
@@ -140,9 +137,6 @@ def detect_and_crop_bubble_region(binary_img, original_img, debug=True):
     print(f"   🎯 Bubble density: {len(bubble_centers)} bubbles in region")
     return crop_info, cropped_binary, cropped_original
 
-# ========================
-# ENHANCED BUBBLE DETECTION WITH CROP FOCUS
-# ========================
 def detect_bubbles_enhanced_crop(binary_img, original_img, crop_info=None):
     """Enhanced bubble detection optimized for cropped bubble region"""
     print("Step 3: Enhanced bubble detection on cropped region...")
@@ -150,7 +144,7 @@ def detect_bubbles_enhanced_crop(binary_img, original_img, crop_info=None):
     h, w = binary_img.shape
     debug_img = original_img.copy()
     
-    # Find contours in the cropped region
+    
     contours, hierarchy = cv2.findContours(binary_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     bubble_candidates = []
@@ -159,19 +153,19 @@ def detect_bubbles_enhanced_crop(binary_img, original_img, crop_info=None):
         area = cv2.contourArea(contour)
         perimeter = cv2.arcLength(contour, True)
         
-        # Adjusted size ranges for cropped images
+        
         if 15 < area < 1200 and perimeter > 0:
             x, y, w_cont, h_cont = cv2.boundingRect(contour)
             aspect_ratio = float(w_cont) / h_cont if h_cont > 0 else 0
             
-            # Enhanced shape analysis
+            
             circularity = 4 * np.pi * area / (perimeter * perimeter)
             hull = cv2.convexHull(contour)
             hull_area = cv2.contourArea(hull)
             solidity = area / hull_area if hull_area > 0 else 0
             extent = area / (w_cont * h_cont) if (w_cont * h_cont) > 0 else 0
             
-            # Enhanced filtering for cropped region
+            
             is_bubble_like = (
                 0.3 < aspect_ratio < 3.0 and
                 circularity > 0.15 and  # Slightly lower for imperfect circles
@@ -184,7 +178,7 @@ def detect_bubbles_enhanced_crop(binary_img, original_img, crop_info=None):
                 center_x = x + w_cont // 2
                 center_y = y + h_cont // 2
                 
-                # Additional quality scoring
+                
                 quality_score = calculate_enhanced_quality_score(
                     area, circularity, aspect_ratio, solidity, extent
                 )
@@ -201,7 +195,7 @@ def detect_bubbles_enhanced_crop(binary_img, original_img, crop_info=None):
                     'contour': contour
                 })
                 
-                # Enhanced debug visualization
+                
                 confidence_color = int(255 * quality_score)
                 cv2.rectangle(debug_img, (x, y), (x + w_cont, y + h_cont), 
                              (0, confidence_color, 0), 2)
@@ -209,10 +203,10 @@ def detect_bubbles_enhanced_crop(binary_img, original_img, crop_info=None):
                 cv2.putText(debug_img, f"{quality_score:.2f}", 
                            (x-5, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
     
-    # Filter by quality score
+    
     high_quality_bubbles = [b for b in bubble_candidates if b['quality_score'] > 0.3]
     
-    # Sort by quality
+    
     high_quality_bubbles.sort(key=lambda x: x['quality_score'], reverse=True)
     
     print(f"   🎯 Enhanced detection: {len(high_quality_bubbles)} high-quality bubbles")
@@ -224,14 +218,14 @@ def detect_bubbles_enhanced_crop(binary_img, original_img, crop_info=None):
 
 def calculate_enhanced_quality_score(area, circularity, aspect_ratio, solidity, extent):
     """Calculate enhanced quality score for bubble candidates"""
-    # Normalize metrics
+    
     area_score = min(1.0, area / 300.0)  # Optimal around 300px
     circularity_score = min(1.0, circularity / 0.8)
     aspect_score = 1.0 - abs(aspect_ratio - 1.0)  # Prefer square-ish bubbles
     solidity_score = solidity
     extent_score = extent
     
-    # Weighted combination
+    
     quality_score = (
         area_score * 0.20 +
         circularity_score * 0.30 +
@@ -242,9 +236,7 @@ def calculate_enhanced_quality_score(area, circularity, aspect_ratio, solidity, 
     
     return min(1.0, quality_score)
 
-# ========================
-# ENHANCED MARKING DETECTION FOR CROPPED IMAGES
-# ========================
+
 def detect_markings_enhanced_crop(binary_img, question_map, original_img, crop_info=None):
     """Enhanced marking detection optimized for cropped bubble regions"""
     print("Step 6: Enhanced marking detection on cropped region...")
@@ -253,7 +245,7 @@ def detect_markings_enhanced_crop(binary_img, question_map, original_img, crop_i
     debug_img = original_img.copy()
     confidence_log = []
     
-    # Enhanced precision parameters for cropped images
+    
     precision_params = {
         'fill_weight': 0.35,        # Increased weight for fill ratio
         'center_weight': 0.25,      # Center analysis
@@ -275,7 +267,7 @@ def detect_markings_enhanced_crop(binary_img, question_map, original_img, crop_i
             
             bubble = question_map[q_num][option]
             
-            # Enhanced bubble analysis
+            
             confidence, is_marked = analyze_bubble_enhanced_crop(
                 binary_img, bubble, original_img, precision_params
             )
@@ -285,7 +277,7 @@ def detect_markings_enhanced_crop(binary_img, question_map, original_img, crop_i
             
             option_confidences.append((option, confidence, is_marked))
             
-            # Enhanced visualization
+            
             center = bubble['center']
             bbox = bubble['bbox']
             x, y, w, h = bbox
@@ -302,13 +294,13 @@ def detect_markings_enhanced_crop(binary_img, question_map, original_img, crop_i
             cv2.putText(debug_img, f"Q{q_num}{option}:{confidence:.2f}", 
                        (x-5, y-8), cv2.FONT_HERSHEY_SIMPLEX, 0.25, color, 1)
         
-        # Determine final answer with enhanced logic
+        
         final_answer = determine_final_answer_enhanced(
             question_marks, option_confidences, q_num
         )
         answers[q_num - 1] = final_answer
         
-        # Log for analysis
+        
         confidence_log.append({
             'question': q_num,
             'options': option_confidences,
@@ -318,7 +310,7 @@ def detect_markings_enhanced_crop(binary_img, question_map, original_img, crop_i
     
     cv2.imwrite("output/debug_steps/step6_enhanced_marking_detection.jpg", debug_img)
     
-    # Save detailed analysis
+    
     save_enhanced_analysis(confidence_log)
     
     marked_count = len([a for a in answers if a])
@@ -331,7 +323,6 @@ def analyze_bubble_enhanced_crop(binary_img, bubble, original_img, precision_par
     center_x, center_y = bubble['center']
     x, y, w, h = bubble['bbox']
     
-    # Enhanced ROI analysis
     roi_padding = max(1, min(w, h) // 4)
     x1 = max(0, x - roi_padding)
     x2 = min(binary_img.shape[1], x + w + roi_padding)
@@ -342,12 +333,11 @@ def analyze_bubble_enhanced_crop(binary_img, bubble, original_img, precision_par
     if roi.size == 0:
         return 0.0, False
     
-    # Method 1: Enhanced fill analysis
+    
     total_pixels = roi.size
     filled_pixels = cv2.countNonZero(roi)
     fill_ratio = filled_pixels / total_pixels
     
-    # Method 2: Center-focused analysis
     center_size = max(2, min(w, h) // 2)
     cx1 = max(0, center_x - x1 - center_size)
     cx2 = min(roi.shape[1], center_x - x1 + center_size)
@@ -360,7 +350,6 @@ def analyze_bubble_enhanced_crop(binary_img, bubble, original_img, precision_par
         if center_roi.size > 0:
             center_fill_ratio = cv2.countNonZero(center_roi) / center_roi.size
     
-    # Method 3: Enhanced contour analysis
     contours, _ = cv2.findContours(roi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contour_score = 0
     
@@ -374,7 +363,7 @@ def analyze_bubble_enhanced_crop(binary_img, bubble, original_img, precision_par
                 circularity = 4 * np.pi * contour_area / (perimeter * perimeter)
                 contour_score = (contour_area / (w * h)) * circularity
     
-    # Method 4: Gradient analysis (simplified for performance)
+    
     gradient_score = 0
     if y+h <= original_img.shape[0] and x+w <= original_img.shape[1]:
         original_roi = original_img[y:y+h, x:x+w]
@@ -382,10 +371,10 @@ def analyze_bubble_enhanced_crop(binary_img, bubble, original_img, precision_par
             gray_roi = cv2.cvtColor(original_roi, cv2.COLOR_BGR2GRAY) if len(original_roi.shape) == 3 else original_roi
             gradient_score = np.std(gray_roi) / 255.0
     
-    # Method 5: Texture analysis
+    
     texture_score = np.var(roi.astype(np.float32)) / 10000.0 if roi.size > 10 else 0
     
-    # Enhanced weighted combination
+    
     confidence = (
         precision_params['fill_weight'] * min(fill_ratio * 2.5, 1.0) +
         precision_params['center_weight'] * min(center_fill_ratio * 2.0, 1.0) +
@@ -394,8 +383,8 @@ def analyze_bubble_enhanced_crop(binary_img, bubble, original_img, precision_par
         precision_params['texture_weight'] * min(texture_score, 1.0)
     )
     
-    # Enhanced decision logic
-    base_threshold = 0.25  # Lower threshold for cropped images
+    
+    base_threshold = 0.25
     quality_bonus = bubble.get('quality_score', 0.5) * 0.05
     adjusted_threshold = base_threshold - quality_bonus
     
@@ -412,14 +401,14 @@ def determine_final_answer_enhanced(question_marks, option_confidences, q_num):
     if len(question_marks) == 1:
         return question_marks[0]
     elif len(question_marks) == 0:
-        # Recovery mechanism
+        
         sorted_options = sorted(option_confidences, key=lambda x: x[1], reverse=True)
         if sorted_options and sorted_options[0][1] > 0.18:
             print(f"   Q{q_num}: Recovery answer: {sorted_options[0][0]} (conf: {sorted_options[0][1]:.3f})")
             return sorted_options[0][0]
         return None
     else:
-        # Multiple marks - use highest confidence
+        
         marked_options = [opt for opt in option_confidences if opt[0] in question_marks]
         sorted_marks = sorted(marked_options, key=lambda x: x[1], reverse=True)
         
@@ -462,9 +451,7 @@ def save_enhanced_analysis(confidence_log):
     with open("output/enhanced_crop_summary.json", "w") as f:
         json.dump(summary, f, indent=2)
 
-# ========================
-# MODIFIED MAIN PROCESSING PIPELINE - NOW WITH ANSWER SET SELECTION
-# ========================
+
 def process_single_image_with_autocrop(image_path, selected_answer_set_key, answer_sets, temp_storage=None):
     """Enhanced processing pipeline with automatic bubble region cropping and answer set selection"""
     filename = os.path.basename(image_path)
@@ -473,18 +460,18 @@ def process_single_image_with_autocrop(image_path, selected_answer_set_key, answ
     print("=" * 60)
     
     try:
-        # Step 1: Load and convert to greyscale
+
         gray_img, original_img = convert_to_greyscale(image_path)
         
-        # Step 2: Apply enhancement techniques
+
         binary_img, enhanced_img = apply_enhancement_techniques(gray_img)
         
-        # Step 2.5: AUTO-DETECT AND CROP BUBBLE REGION
+
         crop_info, cropped_binary, cropped_original = detect_and_crop_bubble_region(
             binary_img, original_img, debug=True
         )
         
-        # Use cropped images if successful, otherwise use full images
+
         if crop_info:
             working_binary = cropped_binary
             working_original = cropped_original
@@ -494,12 +481,12 @@ def process_single_image_with_autocrop(image_path, selected_answer_set_key, answ
             working_original = original_img
             print("   📄 Using full image (no crop detected)")
         
-        # Step 3: Enhanced bubble detection on cropped region
+
         bubble_candidates, debug_boxes = detect_bubbles_enhanced_crop(
             working_binary, working_original, crop_info
         )
         
-        # Recovery if insufficient bubbles
+
         if len(bubble_candidates) < 50:
             print("⚠️ Low bubble count, attempting recovery...")
             working_binary = apply_alternative_preprocessing(
@@ -509,29 +496,29 @@ def process_single_image_with_autocrop(image_path, selected_answer_set_key, answ
                 working_binary, working_original, crop_info
             )
         
-        # Step 4: Organize into grid
+
         grid_info = organize_bubbles_into_grid_enhanced(bubble_candidates)
         
         if not grid_info or grid_info['quality_score'] < 0.3:
             print("⚠️ Grid quality low, attempting fallback...")
             grid_info = create_fallback_grid(bubble_candidates, working_binary.shape)
         
-        # Step 5: Map to questions
+
         question_map = map_bubbles_to_questions_enhanced(grid_info, bubble_candidates)
         
         if not question_map or len(question_map) < 80:
             print("⚠️ Insufficient mapping, using coordinate fallback...")
             question_map = create_coordinate_based_mapping(bubble_candidates, working_binary.shape)
         
-        # Step 6: Enhanced marking detection
+
         extracted_answers = detect_markings_enhanced_crop(
             working_binary, question_map, working_original, crop_info
         )
         
-        # Step 7: Get selected answer key
+
         answer_key = answer_sets.get(selected_answer_set_key, answer_sets.get("SET_A", ["A"] * 100))
         
-        # Step 8: Score with comparison
+
         subject_scores, total_score, flagged, detailed_results, temp_data = calculate_score_with_comparison(
             extracted_answers, answer_key, temp_storage
         )
@@ -570,9 +557,6 @@ def process_single_image_with_autocrop(image_path, selected_answer_set_key, answ
         print(f"❌ Error in auto-crop pipeline: {str(e)}")
         return None, []
 
-# ========================
-# ENHANCED GRID ORGANIZATION
-# ========================
 def organize_bubbles_into_grid_enhanced(bubble_candidates):
     """Enhanced grid organization optimized for cropped regions"""
     print("Step 4: Enhanced grid organization...")
@@ -582,15 +566,15 @@ def organize_bubbles_into_grid_enhanced(bubble_candidates):
     
     centers = np.array([bubble['center'] for bubble in bubble_candidates])
     
-    # Enhanced row detection with clustering
+
     y_coords = centers[:, 1]
     
-    # Use DBSCAN to find row clusters
+
     y_coords_reshaped = y_coords.reshape(-1, 1)
     clustering = DBSCAN(eps=20, min_samples=3).fit(y_coords_reshaped)
     labels = clustering.labels_
     
-    # Group bubbles by row clusters
+
     row_clusters = {}
     for i, label in enumerate(labels):
         if label != -1:  # Ignore noise points
@@ -598,19 +582,18 @@ def organize_bubbles_into_grid_enhanced(bubble_candidates):
                 row_clusters[label] = []
             row_clusters[label].append(bubble_candidates[i])
     
-    # Sort rows by average Y coordinate
+
     rows = []
     for label in sorted(row_clusters.keys(), key=lambda l: np.mean([b['center'][1] for b in row_clusters[l]])):
         row_bubbles = sorted(row_clusters[label], key=lambda b: b['center'][0])
         if len(row_bubbles) >= 4:  # Need at least 4 bubbles for A,B,C,D
             rows.append(row_bubbles)
     
-    # Calculate grid quality
     total_bubbles = sum(len(row) for row in rows)
-    expected_bubbles = len(rows) * 4  # Assuming 4 options per question
+    expected_bubbles = len(rows) * 4
     quality_score = min(1.0, total_bubbles / max(expected_bubbles, 1)) if expected_bubbles > 0 else 0
     
-    # Additional quality metrics
+    
     row_consistency = np.std([len(row) for row in rows]) if rows else 0
     quality_adjustment = max(0, 1.0 - (row_consistency / 10.0))
     final_quality = quality_score * quality_adjustment
@@ -642,7 +625,6 @@ def map_bubbles_to_questions_enhanced(grid_info, bubble_candidates):
         if len(row) < 4:
             continue
         
-        # Group bubbles into questions based on spacing
         question_groups = []
         current_group = []
         last_x = -1
@@ -650,7 +632,7 @@ def map_bubbles_to_questions_enhanced(grid_info, bubble_candidates):
         for bubble in row:
             x = bubble['center'][0]
             
-            # If significant gap, start new question group
+        
             if last_x != -1 and x - last_x > 80:  # Adjustable spacing threshold
                 if len(current_group) >= 4:
                     question_groups.append(current_group)
@@ -660,17 +642,17 @@ def map_bubbles_to_questions_enhanced(grid_info, bubble_candidates):
             
             last_x = x
         
-        # Add the last group
+        
         if len(current_group) >= 4:
             question_groups.append(current_group)
         
-        # If no clear grouping, fall back to groups of 4
+        
         if not question_groups:
             for i in range(0, len(row), 4):
                 if i + 3 < len(row):
                     question_groups.append(row[i:i+4])
         
-        # Map each group to a question
+        
         for group in question_groups:
             if question_num > 100:
                 break
@@ -685,9 +667,7 @@ def map_bubbles_to_questions_enhanced(grid_info, bubble_candidates):
     print(f"   Enhanced mapping: {len(question_map)} questions mapped")
     return question_map
 
-# ========================
-# REQUIRED SUPPORTING FUNCTIONS
-# ========================
+
 def convert_to_greyscale(image_path):
     """Load image and convert to greyscale"""
     img = cv2.imread(image_path)
@@ -705,21 +685,21 @@ def apply_enhancement_techniques(gray_img):
     """Apply image enhancement for better bubble detection"""
     print("Step 2: Applying enhancement techniques...")
     
-    # Denoise
+
     denoised = cv2.fastNlMeansDenoising(gray_img, None, 10, 7, 21)
     
-    # Enhance contrast
+
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
     enhanced = clahe.apply(denoised)
     
-    # Apply bilateral filter
+
     filtered = cv2.bilateralFilter(enhanced, 9, 80, 80)
     
-    # Adaptive thresholding
+
     binary = cv2.adaptiveThreshold(filtered, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                                    cv2.THRESH_BINARY_INV, 11, 2)
     
-    # Morphological operations
+
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
     
@@ -732,11 +712,11 @@ def apply_alternative_preprocessing(gray_img):
     """Alternative preprocessing for difficult images"""
     print("   Applying alternative preprocessing...")
     
-    # More aggressive enhancement
+    
     clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8,8))
     enhanced = clahe.apply(gray_img)
     
-    # Different thresholding
+    
     binary = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_MEAN_C, 
                                    cv2.THRESH_BINARY_INV, 15, 4)
     
@@ -757,10 +737,10 @@ def create_coordinate_based_mapping(bubble_candidates, image_shape):
     question_map = {}
     question_num = 1
     
-    # Sort by position
+    
     sorted_bubbles = sorted(bubble_candidates, key=lambda b: (b['center'][1], b['center'][0]))
     
-    # Group into questions of 4
+    
     for i in range(0, len(sorted_bubbles) - 3, 4):
         if question_num > 100:
             break
@@ -776,9 +756,6 @@ def create_coordinate_based_mapping(bubble_candidates, image_shape):
     
     return question_map
 
-# ========================
-# ANSWER SET MANAGEMENT WITH USER SELECTION
-# ========================
 def create_answer_sets_input():
     """Interactive function to create answer sets A and B"""
     print("\n" + "="*60)
@@ -845,7 +822,7 @@ def load_or_create_answer_sets(answer_keys_path="answer_keys.json"):
         except Exception as e:
             print(f"Error reading existing file: {e}")
     
-    # Create new sets
+
     print("Creating new answer sets...")
     new_sets = create_answer_sets_input()
     
@@ -911,7 +888,7 @@ def calculate_score_with_comparison(extracted_answers, answer_key, temp_storage=
         answer_key.extend(answer_key[:min(4, 100-len(answer_key))])
     answer_key = answer_key[:100]
     
-    # Direct comparison
+
     subject_scores = [0] * 5
     detailed_results = []
     
@@ -944,24 +921,22 @@ def calculate_score_with_comparison(extracted_answers, answer_key, temp_storage=
     
     return subject_scores, total_score, overall_flagged, detailed_results, temp_storage
 
-# ========================
-# MAIN BATCH PROCESSING WITH ANSWER SET SELECTION
-# ========================
+
 def batch_process_with_autocrop_and_selection(input_folder="input", output_csv="output/autocrop_results.csv"):
     """Batch process images with auto-crop feature and answer set selection"""
     print("AUTO-CROP ENHANCED OMR PROCESSING WITH ANSWER SET SELECTION")
     print("=" * 80)
     
-    # Load answer sets
+
     answer_sets = load_or_create_answer_sets()
     if not answer_sets:
         print("No answer sets available. Exiting.")
         return pd.DataFrame()
     
-    # Let user select which answer set to use for processing
+
     selected_answer_set_key = select_answer_set_for_processing(answer_sets)
     
-    # Find images
+
     image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.tiff']
     image_paths = []
     for ext in image_extensions:
@@ -996,13 +971,13 @@ def batch_process_with_autocrop_and_selection(input_folder="input", output_csv="
         except Exception as e:
             print(f"Error processing {filename}: {str(e)}")
     
-    # Save results
+
     if results:
         df = pd.DataFrame(results)
         os.makedirs("output", exist_ok=True)
         df.to_csv(output_csv, index=False)
         
-        # Statistics
+
         cropped_count = len(df[df.get('Auto_Cropped', pd.Series([False] * len(df)))])
         avg_reduction = df[df.get('Auto_Cropped', pd.Series([False] * len(df)))].get('Crop_Reduction', pd.Series([0])).mean()
         
@@ -1016,9 +991,7 @@ def batch_process_with_autocrop_and_selection(input_folder="input", output_csv="
     
     return df if results else pd.DataFrame()
 
-# ========================
-# MAIN EXECUTION
-# ========================
+
 if __name__ == "__main__":
     print("AUTO-CROP ENHANCED OMR PROCESSING WITH ANSWER SET SELECTION v2.0")
     print("=" * 80)
@@ -1037,14 +1010,13 @@ if __name__ == "__main__":
         print(f"Files processed: {len(results_df)}")
         print(f"Average accuracy: {results_df['Accuracy'].mean():.2f}%")
         
-        # Auto-crop statistics
         if 'Auto_Cropped' in results_df.columns:
             cropped_files = results_df[results_df['Auto_Cropped']]
             if len(cropped_files) > 0:
                 print(f"Auto-cropped files: {len(cropped_files)}")
                 print(f"Average size reduction: {cropped_files['Crop_Reduction'].mean():.1%}")
         
-        # Answer set used
+        
         if 'Selected_Answer_Set' in results_df.columns:
             used_set = results_df['Selected_Answer_Set'].iloc[0]
             print(f"Answer set used: {used_set}")

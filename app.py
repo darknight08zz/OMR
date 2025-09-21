@@ -171,7 +171,7 @@ st.markdown("""
 # ========================
 with st.sidebar:
     st.image("https://via.placeholder.com/150x50?text=Auto-Crop+OMR+v3.0", use_container_width=True)
-    st.title("Auto-Crop OMR with Answer Set Selection")
+    st.title("Automated OMR Evaluation & Scoring System")
     st.markdown("---")
     st.markdown("### 🧭 Navigation")
     # Initialize session state

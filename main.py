@@ -16,17 +16,14 @@ def detect_and_crop_bubble_region(binary_img, original_img, debug=True):
     This removes headers, margins, and focuses only on the answer bubbles
     """
     print("🎯 Step 2.5: Auto-detecting bubble region for cropping...")
-    
     h, w = binary_img.shape
     debug_img = original_img.copy() if debug else None
-    
+
     # Method 1: Find dense bubble regions using contour analysis
     contours, _ = cv2.findContours(binary_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
     # Filter contours that look like bubbles
     bubble_contours = []
     bubble_centers = []
-    
     for contour in contours:
         area = cv2.contourArea(contour)
         if 20 < area < 800:  # Bubble size range
@@ -36,82 +33,82 @@ def detect_and_crop_bubble_region(binary_img, original_img, debug=True):
                 if circularity > 0.2:  # Reasonably circular
                     x, y, w_cont, h_cont = cv2.boundingRect(contour)
                     aspect_ratio = float(w_cont) / h_cont if h_cont > 0 else 0
-                    
                     if 0.3 < aspect_ratio < 3.0:  # Reasonable aspect ratio
                         bubble_contours.append(contour)
                         center_x = x + w_cont // 2
                         center_y = y + h_cont // 2
                         bubble_centers.append((center_x, center_y))
-    
+
     if len(bubble_centers) < 50:
         print("   ⚠️ Insufficient bubbles detected for auto-crop, using full image")
         return None, binary_img, original_img
-    
-    # Method 2: Find the bounding region of all bubble centers
+
+    # Method 2: Find the bounding region of all bubble centers (initial estimate)
     centers_array = np.array(bubble_centers)
-    
-    # Calculate density map to find the main bubble region
-    margin = 50  # Pixels margin around detected region
-    
+    margin = 50  # Initial margin
     min_x = max(0, np.min(centers_array[:, 0]) - margin)
     max_x = min(w, np.max(centers_array[:, 0]) + margin)
     min_y = max(0, np.min(centers_array[:, 1]) - margin)
     max_y = min(h, np.max(centers_array[:, 1]) + margin)
-    
+
     # Method 3: Refine boundaries using bubble density
-    grid_width = max_x - min_x
-    grid_height = max_y - min_y
-    
     # Create density map
     density_map = np.zeros((h, w), dtype=np.float32)
     for center_x, center_y in bubble_centers:
-        # Add gaussian around each bubble center
-        y1, y2 = max(0, center_y - 25), min(h, center_y + 25)
-        x1, x2 = max(0, center_x - 25), min(w, center_x + 25)
-        density_map[y1:y2, x1:x2] += 1
-    
-    # Find the region with highest density
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (100, 100))
+        # Add gaussian-like influence around each bubble center
+        # Using a smaller radius for potentially sharper density peaks
+        influence_radius = 20 # Reduced from 25
+        y1, y2 = max(0, center_y - influence_radius), min(h, center_y + influence_radius)
+        x1, x2 = max(0, center_x - influence_radius), min(w, center_x + influence_radius)
+        density_map[y1:y2, x1:x2] += 1 # Simple increment, could use Gaussian if needed
+
+    # Find the region with highest density - Use a smaller, more focused kernel
+    # Smaller kernel size for less smoothing
+    kernel_size = max(30, min(w, h) // 20) # Example: adaptive size, min 30px
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
     smoothed_density = cv2.filter2D(density_map, -1, kernel)
-    
-    # Find the optimal crop region
-    density_threshold = np.max(smoothed_density) * 0.3
+
+    # --- MODIFIED: Higher density threshold for tighter crop ---
+    # Increased threshold multiplier from 0.3 to 0.5 or 0.6
+    density_threshold = np.max(smoothed_density) * 0.55 # <--- ADJUST THIS VALUE (Try 0.5, 0.55, 0.6)
     high_density_mask = (smoothed_density > density_threshold).astype(np.uint8)
-    
+
     # Find the bounding box of high density region
     coords = cv2.findNonZero(high_density_mask)
     if coords is not None:
         x, y, w_crop, h_crop = cv2.boundingRect(coords)
-        
-        # Add some padding
-        padding = 30
+        # --- MODIFIED: Reduced padding ---
+        # Reduced padding from 30 to a smaller fixed value or proportional value
+        # Consider estimating bubble spacing for dynamic padding?
+        padding = 20 # <--- Reduced padding (Try 10, 15, 20)
         crop_x1 = max(0, x - padding)
         crop_y1 = max(0, y - padding)
         crop_x2 = min(w, x + w_crop + padding)
         crop_y2 = min(h, y + h_crop + padding)
     else:
-        # Fallback to original method
+        # Fallback to initial bounding box method if density method fails
+        print("   ⚠️ Density-based crop failed, using bounding box method")
         crop_x1, crop_y1 = int(min_x), int(min_y)
         crop_x2, crop_y2 = int(max_x), int(max_y)
-    
+
     # Validate crop region
     crop_width = crop_x2 - crop_x1
     crop_height = crop_y2 - crop_y1
-    
-    if crop_width < 200 or crop_height < 300:
+    # Adjust minimum size criteria if needed, but keep reasonable
+    if crop_width < 150 or crop_height < 200: # Slightly relaxed from 200x300
         print("   ⚠️ Detected crop region too small, using full image")
         return None, binary_img, original_img
-    
+
     # Calculate coverage statistics
     total_area = w * h
     crop_area = crop_width * crop_height
     coverage_ratio = crop_area / total_area
     reduction_ratio = 1.0 - coverage_ratio
-    
+
     # Crop the images
     cropped_binary = binary_img[crop_y1:crop_y2, crop_x1:crop_x2]
     cropped_original = original_img[crop_y1:crop_y2, crop_x1:crop_x2]
-    
+
     # Create crop info
     crop_info = {
         'bbox': (crop_x1, crop_y1, crop_width, crop_height),
@@ -120,30 +117,27 @@ def detect_and_crop_bubble_region(binary_img, original_img, debug=True):
         'coverage_ratio': coverage_ratio,
         'reduction_ratio': reduction_ratio,
         'bubble_count': len(bubble_centers),
-        'density_score': np.mean(smoothed_density[crop_y1:crop_y2, crop_x1:crop_x2])
+        'density_score': np.mean(smoothed_density[crop_y1:crop_y2, crop_x1:crop_x2]) if crop_area > 0 else 0
     }
-    
+
     # Debug visualization
     if debug:
         cv2.rectangle(debug_img, (crop_x1, crop_y1), (crop_x2, crop_y2), (0, 255, 0), 3)
-        cv2.putText(debug_img, f"AUTO-CROP REGION", 
+        cv2.putText(debug_img, f"AUTO-CROP REGION",
                    (crop_x1, crop_y1-15), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-        cv2.putText(debug_img, f"Reduction: {reduction_ratio:.1%}", 
+        cv2.putText(debug_img, f"Reduction: {reduction_ratio:.1%}",
                    (crop_x1, crop_y1-45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-        
         # Mark detected bubbles
         for center_x, center_y in bubble_centers:
             cv2.circle(debug_img, (center_x, center_y), 3, (255, 0, 0), 1)
-        
         os.makedirs("output/debug_steps", exist_ok=True)
         cv2.imwrite("output/debug_steps/step2_5_auto_crop_detection.jpg", debug_img)
         cv2.imwrite("output/debug_steps/step2_5_cropped_binary.jpg", cropped_binary)
         cv2.imwrite("output/debug_steps/step2_5_cropped_original.jpg", cropped_original)
-    
+
     print(f"   ✅ Auto-crop successful: {crop_width}x{crop_height}")
     print(f"   📏 Size reduction: {reduction_ratio:.1%} ({w}x{h} → {crop_width}x{crop_height})")
     print(f"   🎯 Bubble density: {len(bubble_centers)} bubbles in region")
-    
     return crop_info, cropped_binary, cropped_original
 
 # ========================

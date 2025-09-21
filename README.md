@@ -4,12 +4,12 @@ An advanced Optical Mark Recognition (OMR) system designed to automatically dete
 
 ## ✨ Key Features
 
-    **🎯 Automatic Bubble Region Detection & Cropping:** Intelligently identifies the main answer grid area, removing headers and margins for focused processing.
-   **🔍 Enhanced Precision on Cropped Region:** Applies optimized algorithms specifically to the detected bubble area for improved accuracy.
-   **📝 Flexible Answer Set Management:** Create, manage, and select from multiple predefined answer sets (e.g., Set A, Set B) for scoring.
-  **⚡ Streamlit Web Interface:** User-friendly GUI for uploading images, configuring answer sets, viewing results, and debugging.
-   **📊 Detailed Results & Analytics:** Provides scores, accuracy metrics, flagged questions, and comparative analysis.
-  **🔍 Visual Debugging Pipeline:** Inspect intermediate processing steps to understand and troubleshoot the system's behavior.
+    **🎯 Automatic Bubble Region Detection & Cropping:** Intelligently identifies the main answer grid area, removing headers and margins for focused processing.\n
+   **🔍 Enhanced Precision on Cropped Region:** Applies optimized algorithms specifically to the detected bubble area for improved accuracy.\n
+   **📝 Flexible Answer Set Management:** Create, manage, and select from multiple predefined answer sets (e.g., Set A, Set B) for scoring.\n
+  **⚡ Streamlit Web Interface:** User-friendly GUI for uploading images, configuring answer sets, viewing results, and debugging.\n
+   **📊 Detailed Results & Analytics:** Provides scores, accuracy metrics, flagged questions, and comparative analysis.\n
+  **🔍 Visual Debugging Pipeline:** Inspect intermediate processing steps to understand and troubleshoot the system's behavior.\n
 
 ## 🚀 Getting Started
 

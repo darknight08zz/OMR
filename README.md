@@ -76,16 +76,16 @@ An advanced Optical Mark Recognition (OMR) system designed to automatically dete
 
 ## 📁 Project Structure
 
-   `app.py`: Main Streamlit application file providing the web interface.
-   `main.py`: Core Python script containing the OMR processing logic (auto-crop, detection, scoring). *(Content from Pasted_Text_1758424614496.txt)*
-   `requirements.txt`: List of required Python packages.
-   `input/`: Folder where uploaded images are temporarily stored during processing.
-   `output/`: Folder where results (CSVs), debug images, and analysis files are saved.
-       `output/debug_steps/`: Intermediate processing images for debugging.
-       `output/autocrop_results.csv`: Main results file generated after batch processing.
-       `output/enhanced_crop_analysis.csv`: Detailed bubble marking confidence data.
-       `output/enhanced_crop_summary.json`: Summary statistics of the marking detection.
-   `answer_keys.json`: File storing the created answer sets in JSON format.
+*   `app.py`: Main Streamlit application file providing the web interface.
+*   `main.py`: Core Python script containing the OMR processing logic (auto-crop, detection, scoring). *(Content from Pasted_Text_1758424614496.txt)*
+*   `requirements.txt`: List of required Python packages.
+*   `input/`: Folder where uploaded images are temporarily stored during processing.
+*   `output/`: Folder where results (CSVs), debug images, and analysis files are saved.
+    *   `output/debug_steps/`: Intermediate processing images for debugging.
+    *   `output/autocrop_results.csv`: Main results file generated after batch processing.
+    *   `output/enhanced_crop_analysis.csv`: Detailed bubble marking confidence data.
+    *  `output/enhanced_crop_summary.json`: Summary statistics of the marking detection.
+*   `answer_keys.json`: File storing the created answer sets in JSON format.
 
 ## 🛠️ How It Works (High-Level)
 

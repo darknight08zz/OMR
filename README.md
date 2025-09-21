@@ -2,6 +2,8 @@
 
 An advanced Optical Mark Recognition (OMR) system designed to automatically detect, crop, and evaluate answer sheets with enhanced accuracy. This system features intelligent bubble region detection, user-defined answer sets, and a comprehensive web interface for processing and analysis.
 
+**🚀 Live Deployment:** [https://omr-evaluator.streamlit.app/](https://omr-evaluator.streamlit.app/)
+
 ## ✨ Key Features
 
 *   **🎯 Automatic Bubble Region Detection & Cropping:** Intelligently identifies the main answer grid area, removing headers and margins for focused processing.

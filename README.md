@@ -1,8 +1,8 @@
-🎯 Automated OMR Evaluation & Scoring System
+## 🎯 Automated OMR Evaluation & Scoring System
 
 An advanced Optical Mark Recognition (OMR) system designed to automatically detect, crop, and evaluate answer sheets with enhanced accuracy. This system features intelligent bubble region detection, user-defined answer sets, and a comprehensive web interface for processing and analysis.
 
-✨ Key Features
+## ✨ Key Features
 
     🎯 Automatic Bubble Region Detection & Cropping:** Intelligently identifies the main answer grid area, removing headers and margins for focused processing.
    🔍 Enhanced Precision on Cropped Region:** Applies optimized algorithms specifically to the detected bubble area for improved accuracy.
@@ -11,9 +11,9 @@ An advanced Optical Mark Recognition (OMR) system designed to automatically dete
    📊 Detailed Results & Analytics:** Provides scores, accuracy metrics, flagged questions, and comparative analysis.
   🔍 Visual Debugging Pipeline:** Inspect intermediate processing steps to understand and troubleshoot the system's behavior.
 
-🚀 Getting Started
+## 🚀 Getting Started
 
-Prerequisites
+**Prerequisites**
 
    Python 3.7+
    Required Python libraries (install via `pip install -r requirements.txt`):
@@ -26,7 +26,7 @@ Prerequisites
     streamlit
     ```
 
-Installation
+## Installation
 
 1.  Clone or download this repository.
 2.  Install the required dependencies:
@@ -36,7 +36,7 @@ Installation
 3.  Ensure `main.py` (containing the core processing logic) is in the same directory as `app.py` (the Streamlit application).
 
 
-Running the Application
+## Running the Application
 
 1.  Open a terminal or command prompt in the project directory.
 2.  Run the Streamlit app:
@@ -47,33 +47,33 @@ Running the Application
 
 
 
-🧭 Using the System
+## 🧭 Using the System
 
-1.  📝 Answer Sets Management:**
+1.  **📝 Answer Sets Management:**
        Navigate to the "Answer Sets" page in the sidebar.
        Create or upload your answer keys (100 answers: A, B, C, D). You can manage multiple sets.
        Save your sets for use in processing.
 
-2.  🎯 Image Processing:**
+2.  **🎯 Image Processing:**
        Go to the "Image Processing" page.
        Select the desired answer set from the dropdown.
        Upload one or more scanned OMR sheet images (JPG, PNG, TIFF, BMP).
        Click "Start Processing with Selected Answer Set".
        The system will automatically detect the bubble region, crop the image, analyze the marks, and score the sheets based on the chosen answer set.
 
-3.  📊 View Results:**
+3.  **📊 View Results:**
        After processing, navigate to the "View Results" page to see a summary table of scores and accuracy for each processed sheet.
 
-4.  🔍 Answer Comparison:**
+4.  **🔍 Answer Comparison:**
        The "Answer Comparison" page offers a detailed, question-by-question breakdown of the student's answers versus the selected answer key, including filtering and subject-wise analysis.
 
-5.  🔍 Debug Pipeline:**
+5.  **🔍 Debug Pipeline:**
        Use the "Debug Pipeline" page to view intermediate images generated during the processing of the last batch, helping to visualize how the system interprets the sheets.
 
-6.  📈 Analytics:**
+6.  **📈 Analytics:**
        The "Analytics" page provides performance charts, score distributions, subject-wise performance, and insights into the effectiveness of the auto-crop feature and the selected answer set.
 
-📁 Project Structure
+## 📁 Project Structure
 
    `app.py`: Main Streamlit application file providing the web interface.
    `main.py`: Core Python script containing the OMR processing logic (auto-crop, detection, scoring). *(Content from Pasted_Text_1758424614496.txt)*

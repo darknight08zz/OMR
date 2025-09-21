@@ -4,3 +4,4 @@ pillow
 streamlit
 pandas
 pytesseract
+scikit-learn
